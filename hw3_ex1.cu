@@ -4,17 +4,18 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include "openmp_functions.c"
+#include "gpu_functions.cu"
+
 #define BLOCK_SIZE  16
 #define HEADER_SIZE 138
-#define BLOCK_SIZE_SH 18
 
 typedef unsigned char BYTE;
 
 /**
  * Structure that represents a BMP image.
  */
-typedef struct
-{
+typedef struct {
     int   ancho;
     int   alto;
     float *data;
@@ -144,249 +145,6 @@ void store_result(int index, double elapsed_cpu, double elapsed_gpu,
     }
 }
 
-/**
- * Converts a given 24bpp image into 8bpp grayscale using the CPU.
- */
-void cpu_grayscale(int ancho, int alto, float *image, float *image_out){
-    for (int y = 0; y < alto; y++)
-    {
-        int offset_out = y * ancho;      // 1 color per pixel
-        int offset     = offset_out * 3; // 3 colors per pixel
-        
-        for (int x = 0; x < ancho; x++)
-        {
-            float *pixel = &image[offset + x * 3];
-            
-            // Convert to grayscale following the "luminance" model
-            image_out[offset_out + x] = pixel[0] * 0.0722f + // B
-                                        pixel[1] * 0.7152f + // G
-                                        pixel[2] * 0.2126f;  // R
-        }
-    }
-}
-
-/**
- * Converts a given 24bpp image into 8bpp grayscale using the GPU.
- */
-__global__ void gpu_grayscale(int ancho, int alto, float *image, float *image_out){
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if( x < ancho && y < alto){
-        float *pixel = &image[(y*ancho + x)*3]; //Multiplico por 3 para tener en cuenta la linealización del arreglo
-        image_out[y*ancho + x]= pixel[0] * 0.0722f + // B
-                                pixel[1] * 0.7152f + // G
-                                pixel[2] * 0.2126f;  // R
-    }    
-}
-
-/**
- * Applies a 3x3 convolution matrix to a pixel using the CPU.
- */
-float cpu_applyFilter(float *image, int stride, float *matrix, int filter_dim){
-    float pixel = 0.0f;
-    
-    for (int h = 0; h < filter_dim; h++)
-    {
-        int offset        = h * stride;
-        int offset_kernel = h * filter_dim;
-        
-        for (int w = 0; w < filter_dim; w++)
-        {
-            pixel += image[offset + w] * matrix[offset_kernel + w];
-        }
-    }
-    
-    return pixel;
-}
-
-/**
- * Applies a 3x3 convolution matrix to a pixel using the GPU.
- */
-__device__ float gpu_applyFilter(float *image, int stride, float *matrix, int filter_dim){  
-    //Cada hilo llama a este procedimiento por cada pixel, así que esta convolución se serializa para cada pixel pero se paraleliza por el metodo anterior
-
-    float pixel = 0.0f;
-   
-    for (int h = 0; h < filter_dim; h++)
-    {
-        int offset        = h * stride;
-        int offset_kernel = h * filter_dim;
-        
-        for (int w = 0; w < filter_dim; w++)
-        {
-            pixel += image[offset + w] * matrix[offset_kernel + w];
-        }
-    }
-    
-    return pixel;
-}
-
-/**
- * Applies a Gaussian 3x3 filter to a given image using the CPU.
- */
-void cpu_gaussian(int ancho, int alto, float *image, float *image_out){
-    float gaussian[9] = { 1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f,
-                          2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f,
-                          1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f };
-    
-    for (int h = 0; h < (alto - 2); h++)
-    {
-        int offset_t = h * ancho;
-        int offset   = (h + 1) * ancho;
-        
-        for (int w = 0; w < (ancho - 2); w++)
-        {
-            image_out[offset + (w + 1)] = cpu_applyFilter(&image[offset_t + w],
-                                                          ancho, gaussian, 3);
-        }
-    }
-}
-
-/**
- * Applies a Gaussian 3x3 filter to a given image using the GPU. Versión CON implementación de SHARED MEMORY
- */
-__global__ void gpu_gaussian(int ancho, int alto, float *image, float *image_out){
-    float gaussian[9] = { 1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f,
-                          2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f,
-                          1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f };
-
-    __shared__ float sh_block[BLOCK_SIZE_SH * BLOCK_SIZE_SH];                      
-    
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if(x < ancho && y < alto){ // Está dentro de los limites de la imagen
-        sh_block[threadIdx.y*BLOCK_SIZE_SH + threadIdx.x] = image[y*ancho+x]; //Cada bloque de shared memory se matchea con un bloque y/x y cada thread copia su pixel asignado al bloque de SM. Como la shared es compartida solo entre bloques de threads no se "pisan" entre distintos bloques.
-    }
-
-    __syncthreads(); //Para asegurarme que todos los threads del bloque copiaron su pixel al arreglo de la SharedMemory
-
-    if (x < (ancho - 2) && y < (alto - 2)) 
-    {
-        int offset_t = y * ancho + x;
-        int offset   = (y + 1) * ancho + (x + 1);
-        
-        image_out[offset] = gpu_applyFilter(&sh_block[offset_t],
-                                            ancho, gaussian, 3);
-    }
-}
-
-/**
- * Applies a Gaussian 3x3 filter to a given image using the GPU. Versión SIN implementación de SHARED MEMORY
- */
-__global__ void gpu_gaussian1(int ancho, int alto, float *image, float *image_out){
-    float gaussian[9] = { 1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f,
-                          2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f,
-                          1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f };
-    
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
-    
-    if (x < (ancho - 2) && y < (alto - 2)) 
-    {
-        int offset_t = y * ancho + x;
-        int offset   = (y + 1) * ancho + (x + 1);
-        
-        image_out[offset] = gpu_applyFilter(&image[offset_t],
-                                            ancho, gaussian, 3);
-    }
-}
-
-/**
- * Calculates the gradient of an image using a Sobel filter on the CPU.
- */
-void cpu_sobel(int ancho, int alto, float *image, float *image_out){
-    float sobel_x[9] = { 1.0f,  0.0f, -1.0f,
-                         2.0f,  0.0f, -2.0f,
-                         1.0f,  0.0f, -1.0f };
-    float sobel_y[9] = { 1.0f,  2.0f,  1.0f,
-                         0.0f,  0.0f,  0.0f,
-                        -1.0f, -2.0f, -1.0f };
-    
-    for (int h = 0; h < (alto - 2); h++)
-    {
-        int offset_t = h * ancho;
-        int offset   = (h + 1) * ancho;
-        
-        for (int w = 0; w < (ancho - 2); w++)
-        {
-            float gx = cpu_applyFilter(&image[offset_t + w], ancho, sobel_x, 3);
-            float gy = cpu_applyFilter(&image[offset_t + w], ancho, sobel_y, 3);
-            
-            // Note: The output can be negative or exceed the max. color value
-            // of 255. We compensate this afterwards while storing the file.
-            image_out[offset + (w + 1)] = sqrtf(gx * gx + gy * gy);
-        }
-    }
-}
-
-/**
- * Calculates the gradient of an image using a Sobel filter on the GPU. Versión CON implementación de SHARED MEMORY
- */
-__global__ void gpu_sobel(int ancho, int alto, float *image, float *image_out){
-    float sobel_x[9] = { 1.0f,  0.0f, -1.0f,
-                         2.0f,  0.0f, -2.0f,
-                         1.0f,  0.0f, -1.0f };
-    float sobel_y[9] = { 1.0f,  2.0f,  1.0f,
-                         0.0f,  0.0f,  0.0f,
-                        -1.0f, -2.0f, -1.0f };
-
-    __shared__ float sh_block[BLOCK_SIZE_SH * BLOCK_SIZE_SH];
-    
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if(x < ancho && y < alto){ // Está dentro de los limites de la imagen
-        sh_block[threadIdx.y*BLOCK_SIZE_SH + threadIdx.x] = image[y*ancho+x]; //Cada bloque de shared memory se matchea con un bloque y/x y cada thread copia su pixel asignado al bloque de SM. Como la shared es compartida solo entre bloques de threads no se "pisan" entre distintos bloques.
-    }
-
-    __syncthreads(); //Para asegurarme que todos los threads del bloque copiaron su pixel al arreglo de la SharedMemory
-
-    if(y<alto-2 && x< ancho-2){
-
-        int offset_t = y * ancho;
-        int offset   = (y + 1) * ancho;
-        
-        float gx = gpu_applyFilter(&sh_block[offset_t + x], ancho, sobel_x, 3);
-        float gy = gpu_applyFilter(&sh_block[offset_t + x], ancho, sobel_y, 3);
-            
-            // Note: The output can be negative or exceed the max. color value
-            // of 255. We compensate this afterwards while storing the file.
-        image_out[offset + (x + 1)] = sqrtf(gx * gx + gy * gy);
-        
-    }
-}
-
-/**
- * Calculates the gradient of an image using a Sobel filter on the GPU. Versión SIN implementación de SHARED MEMORY
- */
-__global__ void gpu_sobel1(int ancho, int alto, float *image, float *image_out){
-    float sobel_x[9] = { 1.0f,  0.0f, -1.0f,
-                         2.0f,  0.0f, -2.0f,
-                         1.0f,  0.0f, -1.0f };
-    float sobel_y[9] = { 1.0f,  2.0f,  1.0f,
-                         0.0f,  0.0f,  0.0f,
-                        -1.0f, -2.0f, -1.0f };
-    
-    int h= blockIdx.y * blockDim.y + threadIdx.y;
-    int w = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if(h<alto-2 && w< ancho-2){
-
-        int offset_t = h * ancho;
-        int offset   = (h + 1) * ancho;
-        
-        float gx = gpu_applyFilter(&image[offset_t + w], ancho, sobel_x, 3);
-        float gy = gpu_applyFilter(&image[offset_t + w], ancho, sobel_y, 3);
-            
-            // Note: The output can be negative or exceed the max. color value
-            // of 255. We compensate this afterwards while storing the file.
-        image_out[offset + (w + 1)] = sqrtf(gx * gx + gy * gy);
-        
-    }
-}
-
 int main(int argc, char **argv){
     BMPImage bitmap          = { 0 };
     float    *d_bitmap       = { 0 };
@@ -403,6 +161,8 @@ int main(int argc, char **argv){
         fprintf(stderr, "Error: The filename is missing!\n");
         return -1;
     }
+
+    //saludo();
     
     // Read the input image and update the grid dimension
     bitmap     = readBMP(argv[1]);
@@ -459,7 +219,7 @@ int main(int argc, char **argv){
         
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
-        gpu_gaussian<<<grid, block>>>(bitmap.ancho, bitmap.alto,
+        gpu_gaussian_SM<<<grid, block>>>(bitmap.ancho, bitmap.alto,
                                       d_image_out[0], d_image_out[1]);
         
         cudaMemcpy(image_out[1], d_image_out[1],
@@ -484,7 +244,7 @@ int main(int argc, char **argv){
         
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
-        gpu_sobel<<<grid, block>>>(bitmap.ancho, bitmap.alto,
+        gpu_sobel_SM<<<grid, block>>>(bitmap.ancho, bitmap.alto,
                                    d_image_out[1], d_image_out[0]);
         
         cudaMemcpy(image_out[0], d_image_out[0],
@@ -495,10 +255,10 @@ int main(int argc, char **argv){
         
         // Store the final result image with the Sobel filter applied
         store_result(3, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[0]);
-    } 
+    }
+
     // Release the allocated memory
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < 2; i++){
         free(image_out[i]);
         cudaFree(d_image_out[i]);
     }
