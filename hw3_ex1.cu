@@ -1,10 +1,10 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
 #include "openmp_functions.c"
+#include "cpu_functions.cu"
 #include "gpu_functions.cu"
 
 #define BLOCK_SIZE  16
@@ -192,7 +192,7 @@ int main(int argc, char **argv){
         gettimeofday(&t[1], NULL);
         
         elapsed[0] = get_elapsed(t[0], t[1]);
-        
+        /*
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
         gpu_grayscale<<<grid, block>>>(bitmap.ancho, bitmap.alto,
@@ -201,13 +201,22 @@ int main(int argc, char **argv){
         cudaMemcpy(image_out[0], d_image_out[0],
                     image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
+        */
+       
+        //Launch the OpenMP version
+        
+        gettimeofday(&t[0], NULL);
+        openmp_grayscale(bitmap.ancho, bitmap.alto, bitmap.data, image_out[0]);
+        gettimeofday(&t[1], NULL);
+                
         
         elapsed[1] = get_elapsed(t[0], t[1]);
         
         // Store the result image in grayscale
         store_result(1, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[0]);
     }
-    
+
+    /*
     // Step 2: Apply a 3x3 Gaussian filter
     {
         // Launch the CPU version
@@ -256,7 +265,8 @@ int main(int argc, char **argv){
         // Store the final result image with the Sobel filter applied
         store_result(3, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[0]);
     }
-
+    */
+    
     // Release the allocated memory
     for (int i = 0; i < 2; i++){
         free(image_out[i]);
