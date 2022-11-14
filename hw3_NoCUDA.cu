@@ -132,17 +132,31 @@ void store_result(int index, double elapsed_cpu, double elapsed_gpu,
     sprintf(path, "images/hw3_result_%d.bmp", index);
     writeBMPGrayscale(ancho, alto, image, path);
     
-    printf("Step #%d Completed - Result stored in \"%s\".\n", index, path);
-    printf("Elapsed CPU: %fms / ", elapsed_cpu);
+    //printf("Step #%d Completed - Result stored in \"%s\".\n", index, path);
+    printf("\nPaso #%d Completado:",index);
+    switch(index){
+        case 1:
+            printf(" Escala de Grises\n");
+            break;
+        case 2:
+            printf(" Blur de Gauss\n");
+            break;
+        case 3:
+            printf(" Filtrado de Sobel\n");
+            break;
+    }
+    printf("    Tiempo en CPU:      %fms\n",elapsed_cpu);
     
-    printf("Elapsed in OpenMP: %fms / ", elapsed_openmp);
+    printf("    Tiempo en OpenMP:   %fms\n",elapsed_openmp);
+    printf("        Speedup: %d%%\n",(int)(elapsed_cpu/elapsed_openmp)*100);
     if (elapsed_gpu == 0)
     {
-        printf("[GPU version not available]\n");
+        printf("    [Versión en GPU no disponible]\n");
     }
     else
     {
-        printf("Elapsed GPU: %fms\n", elapsed_gpu);
+        printf("    Tiempo en GPU:  %fms\n",elapsed_gpu);
+        printf("        Speedup: %d%%\n",(int)(elapsed_cpu/elapsed_gpu)*100);
     }
 }
 
@@ -163,8 +177,8 @@ int main(int argc, char **argv){
         fprintf(stderr, "Error: The filename is missing!\n");
         return -1;
     }
-    if(argv[3]!=NULL){
-        threads=atoi(argv[3]);
+    if(argv[2]!=NULL){
+        threads=atoi(argv[2]);
     }
     
     // Read the input image and update the grid dimension
@@ -173,7 +187,7 @@ int main(int argc, char **argv){
     /*grid       = dim3(((bitmap.ancho  + (BLOCK_SIZE - 1)) / BLOCK_SIZE),
                       ((bitmap.alto + (BLOCK_SIZE - 1)) / BLOCK_SIZE));*/
     
-    printf("Image opened (ancho=%d alto=%d).\n", bitmap.ancho, bitmap.alto);
+    printf("Imagen '%s' abierta (Ancho = %dp - Alto = %dp) | ",argv[1]+9,bitmap.ancho, bitmap.alto);
     
     // Allocate the intermediate image buffers for each step
     for (int i = 0; i < 2; i++){
@@ -292,7 +306,7 @@ int main(int argc, char **argv){
     
     freeBMP(bitmap);
     //cudaFree(d_bitmap);
-    
+    printf("\n");
     return 0;
 }
 

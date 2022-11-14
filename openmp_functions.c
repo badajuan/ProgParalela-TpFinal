@@ -9,7 +9,7 @@ void openmp_grayscale(int ancho, int alto, float *image, float *image_out,int th
     { 
 
     #pragma omp master
-    printf("Number of threads: %d.\n",omp_get_num_threads());
+    printf("Número de hilos: %d\n",omp_get_num_threads());
     
     #pragma omp for
     for (int y = 0; y < alto; y++){
