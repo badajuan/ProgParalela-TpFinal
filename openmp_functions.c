@@ -33,14 +33,16 @@ void openmp_grayscale(int ancho, int alto, float *image, float *image_out,int th
  */
 float openmp_applyFilter(float *image, int stride, float *matrix, int filter_dim){
     float pixel = 0.0f;
-
+    //#pragma omp private(pixel)
     for (int h = 0; h < filter_dim; h++){
         int offset        = h * stride;
         int offset_kernel = h * filter_dim;
 
         for (int w = 0; w < filter_dim; w++){
+            //#pragma omp atomic
             pixel += image[offset + w] * matrix[offset_kernel + w];
-        }        
+        }
+
     }    
     return pixel;
 }
@@ -49,13 +51,11 @@ float openmp_applyFilter(float *image, int stride, float *matrix, int filter_dim
  * Applies a Gaussian 3x3 filter to a given image using the openmp.
  */
 void openmp_gaussian(int ancho, int alto, float *image, float *image_out, int threads){
-    #pragma omp parallel num_threads(threads)
-    { 
     float gaussian[9] = { 1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f,
                           2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f,
                           1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f };
-    
-    #pragma omp for
+
+    #pragma omp parallel for num_threads(threads)
     for (int h = 0; h < (alto - 2); h++){
         int offset_t = h * ancho;
         int offset   = (h + 1) * ancho;
@@ -65,7 +65,6 @@ void openmp_gaussian(int ancho, int alto, float *image, float *image_out, int th
             image_out[offset + (w + 1)] = openmp_applyFilter(&image[offset_t + w],
                                                           ancho, gaussian, 3);
         }
-    }
     }
 }
 

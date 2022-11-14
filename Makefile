@@ -1,9 +1,8 @@
-
 default: compile
 
-allMP: clear romeMP nycMP
-
 all: clear rome nyc
+
+allMP: clear romeMP nycMP
 
 rome: compile
 	@ ./hw3 ./images/rome.bmp $(T)
@@ -12,7 +11,7 @@ nyc: compile
 	@ ./hw3 ./images/nyc.bmp $(T)
 
 romeMP: mp
-	@ ./hw3 ./images/rome.bmp $(T)
+	@ ./mp ./images/rome.bmp $(T)
 
 nycMP: mp
 	@ ./mp ./images/nyc.bmp $(T)
