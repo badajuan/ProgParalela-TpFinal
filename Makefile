@@ -2,10 +2,10 @@ F=rome
 
 default: compile omp
 
-CUDA: hw3
+CUDA:
 	@ ./hw3 ./images/$(F).bmp $(T)
 
-OMP: omp
+OMP:
 	@ ./omp ./images/$(F).bmp $(T)
 
 all: clear-hw3 rome nyc
@@ -29,9 +29,9 @@ nycOMP: omp
 	@ ./omp ./images/nyc.bmp $(T)
 
 omp: clear-omp
-	@ nvcc hw3_NoCUDA.cu -o omp -Xcompiler -fopenmp
+	@ nvcc hw3_NoCUDA.cu -o omp -Xcompiler -fopenmp $(CFLAGS)
 
-compile: clear-hw3
+cuda: clear-hw3
 	@ nvcc hw3_ex1.cu -o hw3 -Xcompiler -fopenmp
 
 clear: clear-omp clear-hw3

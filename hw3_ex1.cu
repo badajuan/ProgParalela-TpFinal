@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "openmp_functions.c"
 #include "cpu_functions.cu"
@@ -36,7 +37,9 @@ BMPImage readBMP(char *filename){
     FILE     *file  = fopen(filename, "rb");
     
     // Read the header (expected BGR - 24bpp)
-    fread(g_info, sizeof(BYTE), HEADER_SIZE, file);
+    if(!fread(g_info, sizeof(BYTE), HEADER_SIZE, file)){
+        exit(1);
+    }
 
     // Get the image ancho / alto from the header
     bitmap.ancho  = *((int *)&g_info[18]);
@@ -45,7 +48,9 @@ BMPImage readBMP(char *filename){
     
     // Read the image data
     data = (BYTE *)malloc(sizeof(BYTE) * size);
-    fread(data, sizeof(BYTE), size, file);
+    if(!fread(data, sizeof(BYTE), size, file)){
+        exit(1);
+    }
     
     // Convert the pixel values to float
     bitmap.data = (float *)malloc(sizeof(float) * size);
@@ -132,7 +137,6 @@ void store_result(int index, double elapsed_cpu, double elapsed_gpu,
     sprintf(path, "images/hw3_result_%d.bmp", index);
     writeBMPGrayscale(ancho, alto, image, path);
     
-    //printf("Step #%d Completed - Result stored in \"%s\".\n", index, path);
     printf("\nPaso #%d Completado:",index);
     switch(index){
         case 1:
@@ -168,6 +172,7 @@ int main(int argc, char **argv){
     int      image_size      = 0;
     tval     t[2]            = { 0 };
     double   elapsed[3]      = { 0 };
+    double   suma[3]         = {0,0};
     int      threads         = 16;
     dim3     grid(1);                       // The grid will be defined later
     dim3     block(BLOCK_SIZE, BLOCK_SIZE); // The block size will not change
@@ -179,6 +184,11 @@ int main(int argc, char **argv){
     }
     if(argv[2]!=NULL){ //Si me pasan la cantidad de threads a utilizar
         threads=atoi(argv[2]);
+    }
+
+    if(access(argv[1],F_OK)==-1){
+        printf("    Path '%s' inválido - Intente nuevamente\n",argv[1]);
+        return 1;
     }
     
     // Read the input image and update the grid dimension
@@ -233,6 +243,7 @@ int main(int argc, char **argv){
         
         // Store the result image in grayscale
         store_result(1, elapsed[0], elapsed[1], elapsed[2], bitmap.ancho, bitmap.alto, image_out[0]);
+        suma[0]+=elapsed[0];suma[1]+=elapsed[1];suma[2]+=elapsed[2];
     }
 
     // Step 2: Apply a 3x3 Gaussian filter
@@ -264,6 +275,7 @@ int main(int argc, char **argv){
         
         // Store the result image with the Gaussian filter applied
         store_result(2, elapsed[0], elapsed[1], elapsed[2], bitmap.ancho, bitmap.alto, image_out[1]);
+        suma[0]+=elapsed[0];suma[1]+=elapsed[1];suma[2]+=elapsed[2];   
     }
     
 
@@ -296,8 +308,30 @@ int main(int argc, char **argv){
         
         // Store the final result image with the Sobel filter applied
         store_result(3, elapsed[0], elapsed[1],elapsed[2], bitmap.ancho, bitmap.alto, image_out[0]);
+        suma[0]+=elapsed[0];suma[1]+=elapsed[1];suma[2]+=elapsed[2];
+    }
+    for(int i=0;i<55;i++){
+        printf("-");
+    }
+    printf("\nTiempo total en ejecución secuencial:       %.3fms|\n",suma[0]);
+    for(int i=0;i<54;i++){
+        printf(" ");
+    }
+    printf("|\n");
+    printf("Tiempo total usando paralelismo de OpenMP:  %.3fms |\n",suma[2]);
+    printf("    (Speedup total de %.2f%%)                        |\n",(suma[0]/suma[2] -1)*100);
+    for(int i=0;i<54;i++){
+        printf(" ");
+    }
+    printf("|\n");
+    printf("Tiempo total usando paralelismo de CUDA:    %.3fms   |\n",suma[1]);
+    printf("    (Speedup total de %2.5f%%)                 |\n",(suma[0]/suma[1] -1)*100);
+    for(int i=0;i<55;i++){
+        printf("-");
     }
     
+    
+
     // Release the allocated memory
     for (int i = 0; i < 2; i++){
         free(image_out[i]);

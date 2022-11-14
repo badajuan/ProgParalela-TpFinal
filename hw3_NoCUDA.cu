@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "openmp_functions.c"
 #include "cpu_functions.cu"
@@ -36,7 +37,9 @@ BMPImage readBMP(char *filename){
     FILE     *file  = fopen(filename, "rb");
     
     // Read the header (expected BGR - 24bpp)
-    fread(g_info, sizeof(BYTE), HEADER_SIZE, file);
+    if(!fread(g_info, sizeof(BYTE), HEADER_SIZE, file)){
+        exit(1);
+    }
 
     // Get the image ancho / alto from the header
     bitmap.ancho  = *((int *)&g_info[18]);
@@ -45,7 +48,9 @@ BMPImage readBMP(char *filename){
     
     // Read the image data
     data = (BYTE *)malloc(sizeof(BYTE) * size);
-    fread(data, sizeof(BYTE), size, file);
+    if(!fread(data, sizeof(BYTE), size, file)){
+        exit(1);
+    }
     
     // Convert the pixel values to float
     bitmap.data = (float *)malloc(sizeof(float) * size);
@@ -157,6 +162,7 @@ int main(int argc, char **argv){
     int      image_size      = 0;
     tval     t[2]            = { 0 };
     double   elapsed[2]      = { 0 };
+    double   suma[2]         = {0,0};
     int      threads         = 16;
     
     // Make sure the filename is provided
@@ -164,8 +170,12 @@ int main(int argc, char **argv){
         fprintf(stderr, "Error: The filename is missing!\n");
         return -1;
     }
-    if(argv[2]!=NULL){
+    else if(argv[2]!=NULL){
         threads=atoi(argv[2]);
+    }
+    if(access(argv[1],F_OK)==-1){
+        printf("    Path '%s' inválido - Intente nuevamente\n",argv[1]);
+        return 1;
     }
     
     // Read the input image and update the grid dimension
@@ -197,6 +207,7 @@ int main(int argc, char **argv){
 
         // Store the result image in grayscale
         store_result(1, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[0]);
+        suma[0]+=elapsed[0];suma[1]+=elapsed[1];
     }
 
     
@@ -218,6 +229,7 @@ int main(int argc, char **argv){
         
         // Store the result image with the Gaussian filter applied
         store_result(2, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[1]);
+        suma[0]+=elapsed[0];suma[1]+=elapsed[1];
     }
     
     
@@ -239,8 +251,11 @@ int main(int argc, char **argv){
         
         // Store the final result image with the Sobel filter applied
         store_result(3, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[0]);
+        suma[0]+=elapsed[0];suma[1]+=elapsed[1];
     }
-    
+    printf("\nTiempo total en ejecución secuencial:       %.3fms\n",suma[0]);
+    printf("\nTiempo total usando paralelismo de OpenMP:  %.3fms\n",suma[1]);
+    printf("    Speedup total de %.2f%%\n",(suma[0]/suma[1] -1)*100);
     
     // Release the allocated memory
     for (int i = 0; i < 2; i++){
