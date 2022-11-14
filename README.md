@@ -1,8 +1,9 @@
 # Programación Paralela 2022 - __TP Final__ _(OpenMP + CUDA)_
-## ___Descripción:___
+## _Descripción:_
 ### Este proyecto 
 ---
-## Archivos disponibles:
+## _Archivos disponibles:_
+- ### __Makefile__
 - ### __./images/__
     - ### hk.bmp
     - ### hw3.bmp
@@ -14,9 +15,14 @@
 
 - ## __hw3_NoCuda.cu__ _(Versión del proyecto con los modulos CPU-Secuencial y OpenMP)_
 - ## __hw3_ex1.cu__ _(Versión del proyecto con los modulos CPU-Secuencial, OpenMP y Cuda)_
-- ### __Makefile__
 ---
-## ___Observaciones y Conclusiones:___
-
+## _Observaciones y Conclusiones:_
+### Bla bla bla
+###
+###
+###
+---
+- ## _Proyecto Original:_ __"Assigment III: Advanced Cuda" - KTH Royal Institute of Technology__
+- ## _Modificaciones:_ Juan Miguel Badariotti - Estudiante de IComp en la __FCEFyN - UNC__
 
 

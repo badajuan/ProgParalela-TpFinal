@@ -16,13 +16,17 @@ romeMP: mp
 nycMP: mp
 	@ ./mp ./images/nyc.bmp $(T)
 
-mp: clear
+mp: clear-mp
 	@ nvcc hw3_NoCUDA.cu -o mp -Xcompiler -fopenmp
 
-compile: clear
+compile: clear-hw3
 	@ nvcc hw3_ex1.cu -o hw3 -Xcompiler -fopenmp
 
-clear:
+clear: clear-mp clear-hw3
+
+clear-mp:
 	@ rm ./mp -f
+
+clear-hw3:
 	@ rm ./hw3 -f
 

@@ -172,6 +172,7 @@ int main(int argc, char **argv){
     bitmap     = readBMP(argv[1]);
     image_size = bitmap.ancho * bitmap.alto;
     printf("Imagen '%s' abierta (Ancho = %dp - Alto = %dp) | ",argv[1]+9,bitmap.ancho, bitmap.alto);
+    printf("Número de hilos: %d\n",threads);
     
     // Allocate the intermediate image buffers for each step
     for (int i = 0; i < 2; i++){
@@ -210,7 +211,7 @@ int main(int argc, char **argv){
 
         //Launch the OpenMP version
         gettimeofday(&t[0], NULL);
-        openmp_gaussian(bitmap.ancho, bitmap.alto, bitmap.data, image_out[0],threads);
+        openmp_gaussian(bitmap.ancho, bitmap.alto, image_out[0], image_out[1],threads);
         gettimeofday(&t[1], NULL);
         
         elapsed[1] = get_elapsed(t[0], t[1]);
@@ -231,7 +232,7 @@ int main(int argc, char **argv){
 
         //Launch the OpenMP version
         gettimeofday(&t[0], NULL);
-        openmp_sobel(bitmap.ancho, bitmap.alto, bitmap.data, image_out[0],threads);
+        openmp_sobel(bitmap.ancho, bitmap.alto, image_out[1],image_out[0],threads);
         gettimeofday(&t[1], NULL);
         
         elapsed[1] = get_elapsed(t[0], t[1]);

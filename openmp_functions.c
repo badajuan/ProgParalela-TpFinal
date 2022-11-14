@@ -5,13 +5,7 @@
  * Converts a given 24bpp image into 8bpp grayscale using the openmp.
  */
 void openmp_grayscale(int ancho, int alto, float *image, float *image_out,int threads){
-    #pragma omp parallel num_threads(threads)
-    { 
-
-    #pragma omp master
-    printf("Número de hilos: %d\n",omp_get_num_threads());
-    
-    #pragma omp for
+    #pragma omp parallel for num_threads(threads)    
     for (int y = 0; y < alto; y++){
         int offset_out = y * ancho;      // 1 color per pixel
         int offset     = offset_out * 3; // 3 colors per pixel
@@ -25,7 +19,6 @@ void openmp_grayscale(int ancho, int alto, float *image, float *image_out,int th
                                         pixel[2] * 0.2126f;  // R
         }
     }
-    }
 }
 
 /**
@@ -33,7 +26,7 @@ void openmp_grayscale(int ancho, int alto, float *image, float *image_out,int th
  */
 float openmp_applyFilter(float *image, int stride, float *matrix, int filter_dim){
     float pixel = 0.0f;
-    //#pragma omp private(pixel)
+    //#pragma omp parallel for num_threads(2)
     for (int h = 0; h < filter_dim; h++){
         int offset        = h * stride;
         int offset_kernel = h * filter_dim;
@@ -43,7 +36,7 @@ float openmp_applyFilter(float *image, int stride, float *matrix, int filter_dim
             pixel += image[offset + w] * matrix[offset_kernel + w];
         }
 
-    }    
+    }
     return pixel;
 }
 
@@ -83,7 +76,7 @@ void openmp_sobel(int ancho, int alto, float *image, float *image_out, int threa
     for (int h = 0; h < (alto - 2); h++) {
         int offset_t = h * ancho;
         int offset   = (h + 1) * ancho;
-        
+
         for (int w = 0; w < (ancho - 2); w++) {
             float gx = openmp_applyFilter(&image[offset_t + w], ancho, sobel_x, 3);
             float gy = openmp_applyFilter(&image[offset_t + w], ancho, sobel_y, 3);
