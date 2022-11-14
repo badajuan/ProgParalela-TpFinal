@@ -306,7 +306,7 @@ int main(int argc, char **argv){
     
     freeBMP(bitmap);
     cudaFree(d_bitmap);
-    
+    printf("\n");
     return 0;
 }
 
