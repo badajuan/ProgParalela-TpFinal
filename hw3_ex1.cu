@@ -142,13 +142,13 @@ void store_result(int index, double elapsed_cpu, double elapsed_gpu,
             printf(" Blur de Gauss\n");
             break;
         case 3:
-            printf(" Filtrado de Sobel\n");
+            printf(" Filtro de Sobel\n");
             break;
     }
     printf("    Tiempo en CPU:      %fms\n",elapsed_cpu);
     
     printf("    Tiempo en OpenMP:   %fms\n",elapsed_openmp);
-    printf("        Speedup: %.2f%%\n",(elapsed_cpu/elapsed_openmp)*100-100);
+    printf("        Speedup: %.2f%%\n",(elapsed_cpu/elapsed_openmp -1)*100);
     if (elapsed_gpu == 0)
     {
         printf("    [Versión en GPU no disponible]\n");
@@ -156,7 +156,7 @@ void store_result(int index, double elapsed_cpu, double elapsed_gpu,
     else
     {
         printf("    Tiempo en GPU:      %fms\n",elapsed_gpu);
-        printf("        Speedup: %.2f%%\n",(elapsed_cpu/elapsed_gpu)*100-100);
+        printf("        Speedup: %.2f%%\n",(elapsed_cpu/elapsed_gpu -1)*100);
     }
 }
 
