@@ -1,17 +1,27 @@
 
-compile:
-	nvcc hw3_ex1.cu -o hw3 -Xcompiler -fopenmp
+default: compile
 
 allMP: clear romeMP nycMP
 
+all: clear rome nyc
+
+rome: compile
+	@ ./hw3 ./images/rome.bmp $(T)
+
+nyc: compile
+	@ ./hw3 ./images/nyc.bmp $(T)
+
 romeMP: mp
-	@ ./mp ./images/rome.bmp $(T)
+	@ ./hw3 ./images/rome.bmp $(T)
 
 nycMP: mp
 	@ ./mp ./images/nyc.bmp $(T)
 
-mp:
+mp: clear
 	@ nvcc hw3_NoCUDA.cu -o mp -Xcompiler -fopenmp
+
+compile: clear
+	@ nvcc hw3_ex1.cu -o hw3 -Xcompiler -fopenmp
 
 clear:
 	@ rm ./mp -f

@@ -33,18 +33,15 @@ void openmp_grayscale(int ancho, int alto, float *image, float *image_out,int th
  */
 float openmp_applyFilter(float *image, int stride, float *matrix, int filter_dim){
     float pixel = 0.0f;
-    
-    for (int h = 0; h < filter_dim; h++)
-    {
+
+    for (int h = 0; h < filter_dim; h++){
         int offset        = h * stride;
         int offset_kernel = h * filter_dim;
-        
-        for (int w = 0; w < filter_dim; w++)
-        {
+
+        for (int w = 0; w < filter_dim; w++){
             pixel += image[offset + w] * matrix[offset_kernel + w];
-        }
-    }
-    
+        }        
+    }    
     return pixel;
 }
 
@@ -59,8 +56,7 @@ void openmp_gaussian(int ancho, int alto, float *image, float *image_out, int th
                           1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f };
     
     #pragma omp for
-    for (int h = 0; h < (alto - 2); h++)
-    {
+    for (int h = 0; h < (alto - 2); h++){
         int offset_t = h * ancho;
         int offset   = (h + 1) * ancho;
         

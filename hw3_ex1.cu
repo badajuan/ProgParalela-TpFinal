@@ -132,17 +132,31 @@ void store_result(int index, double elapsed_cpu, double elapsed_gpu,
     sprintf(path, "images/hw3_result_%d.bmp", index);
     writeBMPGrayscale(ancho, alto, image, path);
     
-    printf("Step #%d Completed - Result stored in \"%s\".\n", index, path);
-    printf("Elapsed CPU: %fms / ", elapsed_cpu);
+    //printf("Step #%d Completed - Result stored in \"%s\".\n", index, path);
+    printf("\nPaso #%d Completado:",index);
+    switch(index){
+        case 1:
+            printf(" Escala de Grises\n");
+            break;
+        case 2:
+            printf(" Blur de Gauss\n");
+            break;
+        case 3:
+            printf(" Filtrado de Sobel\n");
+            break;
+    }
+    printf("    Tiempo en CPU:      %fms\n",elapsed_cpu);
     
-    printf("Elapsed in OpenMP: %fms / ", elapsed_openmp);
+    printf("    Tiempo en OpenMP:   %fms\n",elapsed_openmp);
+    printf("        Speedup: %d%%\n",(int)(elapsed_cpu/elapsed_openmp)*100);
     if (elapsed_gpu == 0)
     {
-        printf("[GPU version not available]\n");
+        printf("    [Versión en GPU no disponible]\n");
     }
     else
     {
-        printf("Elapsed GPU: %fms / ", elapsed_gpu);
+        printf("    Tiempo en GPU:      %fms\n",elapsed_gpu);
+        printf("        Speedup: %d%%\n",(int)(elapsed_cpu/elapsed_gpu)*100);
     }
 }
 
@@ -154,16 +168,18 @@ int main(int argc, char **argv){
     int      image_size      = 0;
     tval     t[2]            = { 0 };
     double   elapsed[3]      = { 0 };
+    int      threads         = 16;
     dim3     grid(1);                       // The grid will be defined later
     dim3     block(BLOCK_SIZE, BLOCK_SIZE); // The block size will not change
     
     // Make sure the filename is provided
-    if (argc != 2){
+    if (argc == 1){
         fprintf(stderr, "Error: The filename is missing!\n");
         return -1;
     }
-
-    //saludo();
+    if(argv[2]!=NULL){ //Si me pasan la cantidad de threads a utilizar
+        threads=atoi(argv[2]);
+    }
     
     // Read the input image and update the grid dimension
     bitmap     = readBMP(argv[1]);
@@ -171,7 +187,7 @@ int main(int argc, char **argv){
     grid       = dim3(((bitmap.ancho  + (BLOCK_SIZE - 1)) / BLOCK_SIZE),
                       ((bitmap.alto + (BLOCK_SIZE - 1)) / BLOCK_SIZE));
     
-    printf("Image opened (ancho=%d alto=%d).\n", bitmap.ancho, bitmap.alto);
+    printf("Imagen '%s' abierta (Ancho = %dp - Alto = %dp) | ",argv[1]+9,bitmap.ancho, bitmap.alto);
     
     // Allocate the intermediate image buffers for each step
     for (int i = 0; i < 2; i++){
@@ -196,18 +212,19 @@ int main(int argc, char **argv){
 
         //Launch the OpenMP version
         gettimeofday(&t[0], NULL);
-        openmp_grayscale(bitmap.ancho, bitmap.alto, bitmap.data, image_out[0]);
+        openmp_grayscale(bitmap.ancho, bitmap.alto, bitmap.data, image_out[0],threads);
         gettimeofday(&t[1], NULL);
         
         elapsed[2] = get_elapsed(t[0], t[1]);
 
+
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
-        //gpu_grayscale<<<grid, block>>>(bitmap.ancho, bitmap.alto,
-        //                                d_bitmap, d_image_out[0]);
+        gpu_grayscale<<<grid, block>>>(bitmap.ancho, bitmap.alto,
+                                        d_bitmap, d_image_out[0]);
         
-        //cudaMemcpy(image_out[0], d_image_out[0],
-        //            image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(image_out[0], d_image_out[0],
+                    image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         elapsed[1] = get_elapsed(t[0], t[1]);
        
@@ -217,7 +234,6 @@ int main(int argc, char **argv){
         store_result(1, elapsed[0], elapsed[1], elapsed[2], bitmap.ancho, bitmap.alto, image_out[0]);
     }
 
-    /*
     // Step 2: Apply a 3x3 Gaussian filter
     {
         // Launch the CPU version
@@ -227,6 +243,13 @@ int main(int argc, char **argv){
         
         elapsed[0] = get_elapsed(t[0], t[1]);
         
+        //Launch the OpenMP version
+        gettimeofday(&t[0], NULL);
+        openmp_gaussian(bitmap.ancho, bitmap.alto, bitmap.data, image_out[0],threads);
+        gettimeofday(&t[1], NULL);
+        
+        elapsed[2] = get_elapsed(t[0], t[1]);
+
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
         gpu_gaussian_SM<<<grid, block>>>(bitmap.ancho, bitmap.alto,
@@ -239,7 +262,7 @@ int main(int argc, char **argv){
         elapsed[1] = get_elapsed(t[0], t[1]);
         
         // Store the result image with the Gaussian filter applied
-        store_result(2, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[1]);
+        store_result(2, elapsed[0], elapsed[1], elapsed[2], bitmap.ancho, bitmap.alto, image_out[1]);
     }
     
 
@@ -251,6 +274,13 @@ int main(int argc, char **argv){
         gettimeofday(&t[1], NULL);
         
         elapsed[0] = get_elapsed(t[0], t[1]);
+        
+        //Launch the OpenMP version
+        gettimeofday(&t[0], NULL);
+        openmp_sobel(bitmap.ancho, bitmap.alto, bitmap.data, image_out[0],threads);
+        gettimeofday(&t[1], NULL);
+        
+        elapsed[2] = get_elapsed(t[0], t[1]);
         
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
@@ -264,9 +294,8 @@ int main(int argc, char **argv){
         elapsed[1] = get_elapsed(t[0], t[1]);
         
         // Store the final result image with the Sobel filter applied
-        store_result(3, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[0]);
+        store_result(3, elapsed[0], elapsed[1],elapsed[2], bitmap.ancho, bitmap.alto, image_out[0]);
     }
-    */
     
     // Release the allocated memory
     for (int i = 0; i < 2; i++){
