@@ -8,17 +8,17 @@ CUDA:
 OMP:
 	@ ./omp ./images/$(F).bmp $(T)
 
-all: clear-hw3 rome nyc
+all: clear-cuda rome nyc
 	@ ./hw3 ./images/hk.bmp $(T)
 	@ ./hw3 ./images/hw3.bmp $(T)
 
-rome: compile
+rome: cuda
 	@ ./hw3 ./images/rome.bmp $(T)
 
-nyc: compile
+nyc: cuda
 	@ ./hw3 ./images/nyc.bmp $(T)
 
-allOOMP: clear-omp romeOMP nycOMP
+allOMP: clear-omp romeOMP nycOMP
 	@ ./omp ./images/hk.bmp $(T)
 	@ ./omp ./images/hw3.bmp $(T)
 
@@ -31,14 +31,19 @@ nycOMP: omp
 omp: clear-omp
 	@ nvcc hw3_NoCUDA.cu -o omp -Xcompiler -fopenmp $(CFLAGS)
 
-cuda: clear-hw3
+cuda: clear-cuda
 	@ nvcc hw3_ex1.cu -o hw3 -Xcompiler -fopenmp
 
-clear: clear-omp clear-hw3
+clear: clear-omp clear-cuda clear-r
 
 clear-omp:
 	@ rm ./omp -f
 
-clear-hw3:
+clear-cuda:
 	@ rm ./hw3 -f
+
+clear-r:
+	@ rm ./images/*_cuda.bmp -f
+	@ rm ./images/*_omp.bmp -f
+
 

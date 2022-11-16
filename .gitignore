@@ -4,3 +4,6 @@ images/hw3_result_3.bmp
 hw3
 a.out
 omp
+cuda
+*_cuda.bmp
+*_omp.bmp
