@@ -134,7 +134,7 @@ void store_result(int index, double elapsed_cpu,
                     double elapsed_openmp, int ancho, int alto, float *image){
     char path[255];
     
-    sprintf(path, "images/hw3_result_%d.bmp", index);
+    sprintf(path, "images/%d_omp.bmp", index);
     writeBMPGrayscale(ancho, alto, image, path);
     
     //printf("Step #%d Completed - Result stored in \"%s\".\n", index, path);

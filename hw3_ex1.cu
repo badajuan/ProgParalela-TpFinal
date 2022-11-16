@@ -246,6 +246,8 @@ int main(int argc, char **argv){
         gettimeofday(&t[1], NULL);
         elapsed[3] = get_elapsed(t[0], t[1]);
 
+        // cudaMemcpy(image_cuda1[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
+
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
         gpu_grayscale<<<grid, block>>>(bitmap.ancho, bitmap.alto,d_bitmap, d1_image_out[0]);
@@ -276,6 +278,8 @@ int main(int argc, char **argv){
         openmp_gaussian(bitmap.ancho, bitmap.alto, image_omp[0], image_omp[1],threads);
         gettimeofday(&t[1], NULL);
         elapsed[3] = get_elapsed(t[0], t[1]);
+
+        //cudaMemcpy(image_cuda1[1], d1_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
 
         // Launch the GPU-GM version
         gettimeofday(&t[0], NULL);
@@ -311,6 +315,8 @@ int main(int argc, char **argv){
         openmp_sobel(bitmap.ancho, bitmap.alto, image_omp[1],image_omp[0],threads);
         gettimeofday(&t[1], NULL);
         elapsed[3] = get_elapsed(t[0], t[1]);
+
+        //cudaMemcpy(image_cuda1[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
 
         // Launch the GPU-GM version
         gettimeofday(&t[0], NULL);
