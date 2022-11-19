@@ -1,5 +1,5 @@
 # Nombre de la imagen a procesar
-F=rome 
+F=rome
 # Flags de GCC
 CFLAGS=-O3
 # Cantidad de hilos a utilizar en OpenMP
@@ -38,12 +38,14 @@ all-OMP: omp
 	@ ./omp ./images/nyc.bmp $(T)
 
 omp: clean-omp
+	@ echo "Optimización de GCC = '$(CFLAGS)'"
 	@ nvcc hw3_NoCUDA.cu -o omp -Xcompiler -fopenmp $(CFLAGS)
 
 cuda: clean-cuda
+	@ echo "Optimización de GCC = '$(CFLAGS)'"
 	@ nvcc hw3_ex1.cu -o hw3 -Xcompiler -fopenmp $(CFLAGS)
 
-clean: clear-omp clear-cuda clear-r
+clean: clean-omp clean-cuda clean-r
 
 clean-omp:
 	@ rm ./omp -f

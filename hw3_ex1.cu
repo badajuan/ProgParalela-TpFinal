@@ -8,7 +8,6 @@
 #include "cpu_functions.cu"
 #include "gpu_functions.cu"
 
-#define BLOCK_SIZE  16
 #define HEADER_SIZE 138
 #define bold        "\x1B[1m"     
 #define normal      "\x1B[0m"
