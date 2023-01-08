@@ -113,18 +113,11 @@ void cpu_inverse_sobel(int ancho, int alto, float *image, float *image_out){
     for (int y = 0; y < (alto - 1); y++){
         for (int x = 0; x < (ancho - 1); x++){
             int offset = y * ancho + x;
-            int partial=(image[(y-1)*ancho+x]+image[(y+1)*ancho+x]+image[offset-1]+image[offset+1]-image[offset]);
-            //if(partial<10){
-                image_out[offset]=partial;
-            //}
-            /*
-            else if(partial<100){
-                image_out[offset]=partial+25;
-            else{
-                image_out[offset]=partial+75;
-            }
-            //image_out[offset]=255-image[offset];
-            */            
+            image_out[offset]=(image[(y-1)*ancho+x]
+                            +  image[(y+1)*ancho+x]
+                            +  image[offset-1]
+                            +  image[offset+1]
+                             - image[offset]);;
         }
     }
 }

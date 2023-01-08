@@ -130,8 +130,8 @@ double get_elapsed(tval t0, tval t1){
 /**
  * Stores the result image and prints a message.
  */
-void store_result(int index, double elapsed_cpu,
-                    double elapsed_openmp, int ancho, int alto, float *image){
+void store_result(int index, double elapsed_cpu, double elapsed_openmp,
+                  int ancho, int alto, float *image){
     char path[255];
     
     sprintf(path, "images/%d_omp.bmp", index);
@@ -162,11 +162,11 @@ void store_result(int index, double elapsed_cpu,
 int main(int argc, char **argv){
     BMPImage bitmap          = { 0 };
     float    *image_out[2]   = { 0 };
-    int      image_size      = 0;
+    int      image_size      =   0  ;
     tval     t[2]            = { 0 };
     double   elapsed[2]      = { 0 };
     double   suma[2]         = {0,0};
-    int      threads         = 16;
+    int      threads         =  16;
     
     // Make sure the filename is provided
     if (argc == 1){
@@ -261,14 +261,18 @@ int main(int argc, char **argv){
     // Step 4: Apply an Inverse-Sobel filter
     {
         // Launch the CPU version
-        gettimeofday(&t[0], NULL);        
-        //cpu_sobel(bitmap.ancho, bitmap.alto, image_out[1], image_out[0]);
-        //cpu_alternative_sobel(bitmap.ancho, bitmap.alto, image_out[1], image_out[0]);
+        gettimeofday(&t[0], NULL);
         cpu_inverse_sobel(bitmap.ancho, bitmap.alto, image_out[0], image_out[1]);
-        //cpu_inverse_sobel(bitmap.ancho, bitmap.alto, image_out[0], image_out[1]);
         gettimeofday(&t[1], NULL);
 
         elapsed[0] = get_elapsed(t[0], t[1]);
+        //*
+        //Launch the OpenMP version
+        gettimeofday(&t[0], NULL);
+        openmp_inverse_sobel(bitmap.ancho, bitmap.alto, image_out[0],image_out[1],threads);
+        gettimeofday(&t[1], NULL);
+        //*/
+        elapsed[1] = get_elapsed(t[0], t[1]);
 
         store_result(4, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[1]);
 
