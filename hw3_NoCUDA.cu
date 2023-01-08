@@ -149,6 +149,9 @@ void store_result(int index, double elapsed_cpu,
         case 3:
             printf(" Filtro de Sobel\n");
             break;
+        case 4:
+            printf(" Filtro de Sobel Inverso\n");
+            break;
     }
     printf("    Tiempo en CPU:      %fms\n",elapsed_cpu);
     
@@ -253,6 +256,24 @@ int main(int argc, char **argv){
         store_result(3, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[0]);
         suma[0]+=elapsed[0];suma[1]+=elapsed[1];
     }
+    
+
+    // Step 4: Apply an Inverse-Sobel filter
+    {
+        // Launch the CPU version
+        gettimeofday(&t[0], NULL);        
+        //cpu_sobel(bitmap.ancho, bitmap.alto, image_out[1], image_out[0]);
+        //cpu_alternative_sobel(bitmap.ancho, bitmap.alto, image_out[1], image_out[0]);
+        cpu_inverse_sobel(bitmap.ancho, bitmap.alto, image_out[0], image_out[1]);
+        //cpu_inverse_sobel(bitmap.ancho, bitmap.alto, image_out[0], image_out[1]);
+        gettimeofday(&t[1], NULL);
+
+        elapsed[0] = get_elapsed(t[0], t[1]);
+
+        store_result(4, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[1]);
+
+    }
+
     printf("\nTiempo total en ejecución secuencial:       %.3fms\n",suma[0]);
     printf("\nTiempo total usando paralelismo de OpenMP:  %.3fms\n",suma[1]);
     printf("    Speedup total de %.2f%%\n",(suma[0]/suma[1] -1)*100);
