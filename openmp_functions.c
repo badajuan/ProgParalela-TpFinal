@@ -123,11 +123,14 @@ void openmp_inverse_sobel(int ancho, int alto, float *image, float *image_out, i
     //Algoritmo de referencia:
     // imagei;j = (imagei-1;j + imagei+1;j + imagei;j-1 + imagei;j+1 - edgei;j)/4
     #pragma omp parallel for num_threads(threads) schedule(auto)
-    for (int y = 0; y < (alto - 1); y++){
-        for (int x = 0; x < (ancho - 1); x++){
+    for (int y = 1; y < (alto - 2); y++){
+        for (int x = 1; x < (ancho - 1); x++){
             int offset = y * ancho + x;
-            int partial=(image[(y-1)*ancho+x]+image[(y+1)*ancho+x]+image[offset-1]+image[offset+1]-image[offset]);
-            image_out[offset]=partial;
+            image_out[offset]=(image[(y-1)*ancho+x]
+                              +image[(y+1)*ancho+x]
+                              +image[offset-1]
+                              +image[offset+1]
+                              -image[offset]);
         }
     }
 }

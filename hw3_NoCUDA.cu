@@ -258,20 +258,18 @@ int main(int argc, char **argv){
     }
     
 
-    // Step 4: Apply an Inverse-Sobel filter
+    // Step 4: Apply an Inverse Sobel filter
     {
         // Launch the CPU version
         gettimeofday(&t[0], NULL);
         cpu_inverse_sobel(bitmap.ancho, bitmap.alto, image_out[0], image_out[1]);
         gettimeofday(&t[1], NULL);
-
         elapsed[0] = get_elapsed(t[0], t[1]);
-        //*
+        
         //Launch the OpenMP version
         gettimeofday(&t[0], NULL);
         openmp_inverse_sobel(bitmap.ancho, bitmap.alto, image_out[0],image_out[1],threads);
         gettimeofday(&t[1], NULL);
-        //*/
         elapsed[1] = get_elapsed(t[0], t[1]);
 
         store_result(4, elapsed[0], elapsed[1], bitmap.ancho, bitmap.alto, image_out[1]);

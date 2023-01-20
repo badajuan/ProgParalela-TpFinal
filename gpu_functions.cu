@@ -70,7 +70,7 @@ __global__ void gpu_gaussian_SM(int ancho, int alto, float *image, float *image_
         int offset_s = threadIdx.y * BLOCK_SIZE_SH + threadIdx.x;
         int offset   = (y + 1) * ancho + (x + 1);
         
-            sh_block[offset_s] = image[offset_t]; //Cada bloque de shared memory se matchea con un bloque y/x y cada thread copia su pixel asignado al bloque de SM. Como la shared es compartida solo entre bloques de threads no se "pisan" entre distintos bloques.
+        sh_block[offset_s] = image[offset_t]; //Cada bloque de shared memory se matchea con un bloque y/x y cada thread copia su pixel asignado al bloque de SM. Como la shared es compartida solo entre bloques de threads no se "pisan" entre distintos bloques.
         
         if(threadIdx.x==BLOCK_SIZE-1){ //Copio los pixeles para las dos columnas extras
             sh_block[threadIdx.y*BLOCK_SIZE_SH+threadIdx.x+1]=image[y*ancho+x+1];
@@ -191,4 +191,59 @@ __global__ void gpu_sobel_GM(int ancho, int alto, float *image, float *image_out
         image_out[offset + (w + 1)] = sqrtf(gx * gx + gy * gy);
         
     }
+}
+
+__global__ void gpu_inverse_sobel_GM(int ancho, int alto, float *image, float *image_out){
+    //Algoritmo de referencia:
+    // imagei;j = (imagei-1;j + imagei+1;j + imagei;j-1 + imagei;j+1 - edgei;j)/4
+
+    int y= blockIdx.y * blockDim.y + threadIdx.y;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(y>0 && x>0 && y<alto-1 && x<ancho-1){
+        int offset = y * ancho + x;
+        image_out[offset]=(image[(y-1)*ancho+x]
+                        +  image[(y+1)*ancho+x]
+                        +  image[offset-1]
+                        +  image[offset+1]
+                        -  image[offset]);
+    }
+}
+
+__global__ void gpu_inverse_sobel_SM(int ancho, int alto, float *image, float *image_out){
+    //Algoritmo de referencia:
+    // imagei;j = (imagei-1;j + imagei+1;j + imagei;j-1 + imagei;j+1 - edgei;j)/4
+
+    __shared__ float sh_block[BLOCK_SIZE_SH * BLOCK_SIZE_SH];
+
+    int y= blockIdx.y * blockDim.y + threadIdx.y;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    int offset_t = y * ancho + x;
+    int offset_s = threadIdx.y * BLOCK_SIZE_SH + threadIdx.x;
+    
+
+    if(y>0 && x>0 && y<alto-1 && x<ancho-1){
+        
+        sh_block[offset_s] = image[offset_t]; //Cada bloque de shared memory se matchea con un bloque y/x y cada thread copia su pixel asignado al bloque de SM. Como la shared es compartida solo entre bloques de threads no se "pisan" entre distintos bloques.
+    
+        __syncthreads();
+    ///*
+        image_out[offset_t]=(sh_block[(threadIdx.y-1)*BLOCK_SIZE_SH+threadIdx.x]
+                          +  sh_block[(threadIdx.y+1)*BLOCK_SIZE_SH+threadIdx.x]
+                          +  sh_block[offset_s-1]
+                          +  sh_block[offset_s+1]
+                          -  sh_block[offset_s]);
+    }
+    //*/
+   /*
+   if(y>0 && x>0 && y<alto-2 && x< ancho-2){
+        int offset = y * ancho + x;
+        image_out[offset]=(image[(y-1)*ancho+x]
+                        +  image[(y+1)*ancho+x]
+                        +  image[offset-1]
+                        +  image[offset+1]
+                        -  image[offset]);
+    }
+    */
 }

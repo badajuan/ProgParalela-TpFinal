@@ -89,29 +89,11 @@ void cpu_sobel(int ancho, int alto, float *image, float *image_out){
     }
 }
 
-void cpu_alternative_sobel(int ancho, int alto, float *image, float *image_out){
-    //Algoritmo de referencia:
-    //edgei;j = imagei-1;j + imagei+1;j + imagei;j-1 + imagei;j+1 -4imagei;j
-    for (int y = 1; y < (alto - 1); y++){
-        for (int x = 1; x < (ancho - 1); x++){
-            int offset = y * ancho + x;
-            int partial=image[(y-1)*ancho+x]+image[(y+1)*ancho+x]+image[offset+1]+image[offset-1]-4*image[offset];
-            if(partial<3){
-                image_out[offset]=partial+10;
-            }
-            else{
-                image_out[offset]=partial+100;
-            }
-        }
-    }
-}
-
-
 void cpu_inverse_sobel(int ancho, int alto, float *image, float *image_out){
     //Algoritmo de referencia:
     // imagei;j = (imagei-1;j + imagei+1;j + imagei;j-1 + imagei;j+1 - edgei;j)/4
-    for (int y = 0; y < (alto - 1); y++){
-        for (int x = 0; x < (ancho - 1); x++){
+    for (int y = 1; y < (alto - 1); y++){
+        for (int x = 1; x < (ancho - 1); x++){
             int offset = y * ancho + x;
             image_out[offset]=(image[(y-1)*ancho+x]
                             +  image[(y+1)*ancho+x]

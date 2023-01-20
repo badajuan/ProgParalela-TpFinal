@@ -129,11 +129,9 @@ double get_elapsed(tval t0, tval t1){
  * Stores the result image and prints a message.
  */
 void guardar_resultado(int index, double tiempo_cpu, double tiempo_gpu_G, double tiempo_gpu_S,
-                    double tiempo_openmp, int ancho, int alto, float *image_cuda, float *image_omp){
+                       double tiempo_openmp, int ancho, int alto, float *image_cuda, float *image_omp){
     char path1[255];
-    char path2[255];
-    //char path3[255];
-    
+    char path2[255];    
 
     sprintf(path1, "images/%d_omp.bmp", index);
     writeBMPGrayscale(ancho, alto, image_omp, path1);
@@ -150,6 +148,9 @@ void guardar_resultado(int index, double tiempo_cpu, double tiempo_gpu_G, double
             break;
         case 3:
             printf(" Filtro de Sobel\n");
+            break;
+        case 4:
+            printf(" Filtro de Sobel Inverso\n");
             break;
     }
     printf("    Tiempo en CPU:          %fms\n",tiempo_cpu);
@@ -179,18 +180,17 @@ void guardar_resultado(int index, double tiempo_cpu, double tiempo_gpu_G, double
 }
 
 int main(int argc, char **argv){
-    BMPImage bitmap          = { 0 };
-    float    *d_bitmap       = { 0 };
-    float    *image_cuda1[2]   = { 0 };
-    //float    *image_cuda2[2]   = { 0 };
-    float    *image_omp[2]   = { 0 };
+    BMPImage bitmap           = { 0 };
+    float    *d_bitmap        = { 0 };
+    float    *image_cuda[2]   = { 0 };
+    float    *image_omp[2]    = { 0 };
     float    *d1_image_out[2] = { 0 };
     float    *d2_image_out[2] = { 0 };
-    int      image_size      =   0;
-    tval     t[2]            = { 0 };
-    double   elapsed[4]      = { 0 };
-    double   suma[4]         = { 0 };
-    int      threads         =  16;
+    int      image_size       =   0  ;
+    tval     t[2]             = { 0 };
+    double   elapsed[4]       = { 0 };
+    double   suma[4]          = { 0 };
+    int      threads          =  16  ;
     dim3     grid(1);                       // The grid will be defined later
     dim3     block(BLOCK_SIZE, BLOCK_SIZE); // The block size will not change
     
@@ -218,8 +218,7 @@ int main(int argc, char **argv){
 
     // Allocate the intermediate image buffers for each step
     for (int i = 0; i < 2; i++){
-        image_cuda1[i] = (float *)calloc(image_size, sizeof(float));
-        //image_cuda2[i] = (float *)calloc(image_size, sizeof(float));
+        image_cuda[i] = (float *)calloc(image_size, sizeof(float));
         image_omp[i] = (float *)calloc(image_size, sizeof(float));
         cudaMalloc(&d1_image_out[i], image_size * sizeof(float));
         cudaMemset(d1_image_out[i], 0, image_size * sizeof(float));
@@ -245,12 +244,12 @@ int main(int argc, char **argv){
         gettimeofday(&t[1], NULL);
         elapsed[3] = get_elapsed(t[0], t[1]);
 
-        // cudaMemcpy(image_cuda1[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
+        // cudaMemcpy(image_cuda[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
 
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
         gpu_grayscale<<<grid, block>>>(bitmap.ancho, bitmap.alto,d_bitmap, d1_image_out[0]);
-        cudaMemcpy(image_cuda1[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(image_cuda[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         elapsed[1] = get_elapsed(t[0], t[1]);
         elapsed[2] = elapsed[1];
@@ -260,7 +259,7 @@ int main(int argc, char **argv){
         //cudaMemcpy(image_cuda2[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost);
         
         // Store the result image in grayscale
-        guardar_resultado(1, elapsed[0], elapsed[1], elapsed[2], elapsed[3], bitmap.ancho, bitmap.alto, image_cuda1[0],image_omp[0]);
+        guardar_resultado(1, elapsed[0], elapsed[1], elapsed[2], elapsed[3], bitmap.ancho, bitmap.alto, image_cuda[0],image_omp[0]);
         suma[0]+=elapsed[0];suma[1]+=elapsed[1];suma[2]+=elapsed[2];suma[3]+=elapsed[3];   
     }
 
@@ -278,25 +277,25 @@ int main(int argc, char **argv){
         gettimeofday(&t[1], NULL);
         elapsed[3] = get_elapsed(t[0], t[1]);
 
-        //cudaMemcpy(image_cuda1[1], d1_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
+        //cudaMemcpy(image_cuda[1], d1_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
 
         // Launch the GPU-GM version
         gettimeofday(&t[0], NULL);
         gpu_gaussian_GM<<<grid, block>>>(bitmap.ancho, bitmap.alto,d1_image_out[0], d1_image_out[1]);
-        cudaMemcpy(image_cuda1[1], d1_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(image_cuda[1], d1_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         elapsed[1] = get_elapsed(t[0], t[1]);
 
         // Launch the GPU-SM version
         gettimeofday(&t[0], NULL);
         gpu_gaussian_SM<<<grid, block>>>(bitmap.ancho, bitmap.alto,d2_image_out[0], d2_image_out[1]);
-        cudaMemcpy(image_cuda1[1], d2_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(image_cuda[1], d2_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         elapsed[2] = get_elapsed(t[0], t[1]);
         
         
         // Store the result image with the Gaussian filter applied
-        guardar_resultado(2, elapsed[0], elapsed[1], elapsed[2], elapsed[3], bitmap.ancho, bitmap.alto, image_cuda1[1],image_omp[1]);
+        guardar_resultado(2, elapsed[0], elapsed[1], elapsed[2], elapsed[3], bitmap.ancho, bitmap.alto, image_cuda[1],image_omp[1]);
         suma[0]+=elapsed[0];suma[1]+=elapsed[1];suma[2]+=elapsed[2];suma[3]+=elapsed[3];   
     }
     
@@ -315,24 +314,60 @@ int main(int argc, char **argv){
         gettimeofday(&t[1], NULL);
         elapsed[3] = get_elapsed(t[0], t[1]);
 
-        //cudaMemcpy(image_cuda1[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost); //Falsa copia
-
         // Launch the GPU-GM version
         gettimeofday(&t[0], NULL);
         gpu_sobel_GM<<<grid, block>>>(bitmap.ancho, bitmap.alto,d1_image_out[1], d1_image_out[0]);
-        cudaMemcpy(image_cuda1[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(image_cuda[0], d1_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         elapsed[1] = get_elapsed(t[0], t[1]);
         
         // Launch the GPU-SM version
         gettimeofday(&t[0], NULL);
         gpu_sobel_SM<<<grid, block>>>(bitmap.ancho, bitmap.alto,d2_image_out[1], d2_image_out[0]);
-        cudaMemcpy(image_cuda1[0], d2_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(image_cuda[0], d2_image_out[0],image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         elapsed[2] = get_elapsed(t[0], t[1]);
 
         // Store the final result image with the Sobel filter applied
-        guardar_resultado(3, elapsed[0], elapsed[1], elapsed[2], elapsed[3], bitmap.ancho, bitmap.alto, image_cuda1[0],image_omp[0]);
+        guardar_resultado(3, elapsed[0], elapsed[1], elapsed[2], elapsed[3], bitmap.ancho, bitmap.alto, image_cuda[0],image_omp[0]);
+        suma[0]+=elapsed[0];suma[1]+=elapsed[1];suma[2]+=elapsed[2];suma[3]+=elapsed[3];
+    }
+    
+    // Step 4: Apply an Inverse Sobel filter
+    {
+        // Launch the CPU version
+        gettimeofday(&t[0], NULL);
+        cpu_inverse_sobel(bitmap.ancho, bitmap.alto, image_omp[0], image_omp[1]);
+        gettimeofday(&t[1], NULL);
+        elapsed[0] = get_elapsed(t[0], t[1]);
+        
+        
+        //Launch the OpenMP version
+        gettimeofday(&t[0], NULL);
+        openmp_inverse_sobel(bitmap.ancho, bitmap.alto, image_omp[0],image_omp[1],threads);
+        gettimeofday(&t[1], NULL);
+        elapsed[3] = get_elapsed(t[0], t[1]);
+        
+        
+        // Launch the GPU-GM version
+        gettimeofday(&t[0], NULL);
+        gpu_inverse_sobel_GM<<<grid, block>>>(bitmap.ancho, bitmap.alto,d1_image_out[0], d1_image_out[1]);
+        cudaMemcpy(image_cuda[1], d1_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        gettimeofday(&t[1], NULL);
+        elapsed[1] = get_elapsed(t[0], t[1]);
+
+
+        // Launch the GPU-SM version
+        gettimeofday(&t[0], NULL);
+        gpu_inverse_sobel_SM<<<grid, block>>>(bitmap.ancho, bitmap.alto,d2_image_out[0], d2_image_out[1]);
+        cudaMemcpy(image_cuda[1], d2_image_out[1],image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        gettimeofday(&t[1], NULL);
+        elapsed[2] = get_elapsed(t[0], t[1]);
+        
+        
+        // Store the final result image with the Inverse-Sobel filter applied
+        guardar_resultado(4, elapsed[0], elapsed[1], elapsed[2], elapsed[3], bitmap.ancho, bitmap.alto, image_cuda[1],image_omp[1]);
+        
         suma[0]+=elapsed[0];suma[1]+=elapsed[1];suma[2]+=elapsed[2];suma[3]+=elapsed[3];
     }
     
@@ -341,14 +376,12 @@ int main(int argc, char **argv){
     printf("    (Speedup total de %.2f%%)\n",(suma[0]/suma[3] -1)*100);
     printf("\nTiempo total usando paralelismo de CUDA (Global): %.3fms\n",suma[1]);
     printf("    (Speedup total de %2.5f%%)\n",(suma[0]/suma[1] -1)*100);
-    //printf("\n[Versión en GPU (Shared Memory) no disponible]\n");
     printf("\nTiempo total usando paralelismo de CUDA (Shared): %.3fms\n",suma[2]);
     printf("    (Speedup total de %2.5f%%)\n",(suma[0]/suma[2] -1)*100);
 
     // Release the allocated memory
     for (int i = 0; i < 2; i++){
-        free(image_cuda1[i]);
-        //free(image_cuda2[i]);
+        free(image_cuda[i]);
         free(image_omp[i]);
         cudaFree(d1_image_out[i]);
         cudaFree(d2_image_out[i]);
